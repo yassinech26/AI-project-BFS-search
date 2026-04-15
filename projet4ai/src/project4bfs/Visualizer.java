@@ -18,7 +18,10 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class Visualizer extends Application {
 
@@ -132,7 +135,7 @@ public class Visualizer extends Application {
             simulationManager.reset();
             map = simulationManager.getWorkingMap();
             currentMode = EditMode.NONE;
-            drawMap(null, null);
+            drawMap(null, null, null);
 
             distanceLabel.setText("Distance: -");
             exploredLabel.setText("Explored states: -");
@@ -198,7 +201,7 @@ public class Visualizer extends Application {
         stage.show();
 
         updateModeButtons();
-        drawMap(null, null);
+        drawMap(null, null, null);
     }
 
     private void handleCanvasClick(MouseEvent event) {
@@ -307,14 +310,16 @@ public class Visualizer extends Application {
             final int index = i;
             currentTimeline.getKeyFrames().add(
                     new KeyFrame(Duration.millis(70L * (i + 1)), e -> {
-                        drawMap(explored.subList(0, index + 1), null);
+                        List<Node> currentExplored = explored.subList(0, index + 1);
+                        List<Node> frontier = calculateFrontier(currentExplored);
+                        drawMap(currentExplored, frontier, null);
                     })
             );
         }
 
         currentTimeline.getKeyFrames().add(
                 new KeyFrame(Duration.millis(70L * explored.size() + 250), e -> {
-                    drawMap(explored, path);
+                    drawMap(explored, new ArrayList<>(), path);
 
                     // Cast to check if it's a valid search result
                     if (result instanceof BFSExplorer.SearchResult) {
@@ -353,6 +358,21 @@ public class Visualizer extends Application {
         currentTimeline.play();
     }
 
+    private List<Node> calculateFrontier(List<Node> explored) {
+        Set<Node> frontier = new HashSet<>();
+        Set<Node> exploredSet = new HashSet<>(explored);
+
+        for (Node node : explored) {
+            for (Node neighbor : map.getNeighbors(node)) {
+                if (!exploredSet.contains(neighbor) && !frontier.contains(neighbor)) {
+                    frontier.add(neighbor);
+                }
+            }
+        }
+
+        return new ArrayList<>(frontier);
+    }
+
     private void stopAnimation() {
         if (currentTimeline != null) {
             currentTimeline.stop();
@@ -362,7 +382,7 @@ public class Visualizer extends Application {
 
     private void refreshMapOnly() {
         map = simulationManager.getWorkingMap();
-        drawMap(null, null);
+        drawMap(null, null, null);
         updateModeButtons();
     }
 
@@ -447,10 +467,11 @@ public class Visualizer extends Application {
         return sb.toString();
     }
 
-    private void drawMap(List<Node> explored, List<Node> path) {
+    private void drawMap(List<Node> explored, List<Node> frontier, List<Node> path) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
+        // Draw base grid
         for (int row = 0; row < map.getRows(); row++) {
             for (int col = 0; col < map.getCols(); col++) {
                 char cell = map.getCell(row, col);
@@ -463,6 +484,20 @@ public class Visualizer extends Application {
             }
         }
 
+        // Draw frontier in red (cells waiting to be explored)
+        if (frontier != null) {
+            for (Node node : frontier) {
+                char cell = map.getCell(node.getRow(), node.getCol());
+                if (cell == BuildingMap.FREE) {
+                    gc.setFill(Color.web("#ef4444"));
+                    gc.fillRoundRect(node.getCol() * CELL_SIZE, node.getRow() * CELL_SIZE, CELL_SIZE, CELL_SIZE, 8, 8);
+                    gc.setStroke(Color.web("#1f2937"));
+                    gc.strokeRoundRect(node.getCol() * CELL_SIZE, node.getRow() * CELL_SIZE, CELL_SIZE, CELL_SIZE, 8, 8);
+                }
+            }
+        }
+
+        // Draw explored in blue (cells already visited)
         if (explored != null) {
             for (Node node : explored) {
                 char cell = map.getCell(node.getRow(), node.getCol());
@@ -475,6 +510,7 @@ public class Visualizer extends Application {
             }
         }
 
+        // Draw path in yellow
         if (path != null) {
             for (Node node : path) {
                 char cell = map.getCell(node.getRow(), node.getCol());
@@ -487,6 +523,7 @@ public class Visualizer extends Application {
             }
         }
 
+        // Draw labels (S and E)
         for (int row = 0; row < map.getRows(); row++) {
             for (int col = 0; col < map.getCols(); col++) {
                 char cell = map.getCell(row, col);
