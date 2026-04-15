@@ -27,7 +27,9 @@ public class Visualizer extends Application {
     private enum EditMode {
         NONE,
         BLOCK,
-        FIRE
+        FIRE,
+        SET_START,
+        SET_EXIT
     }
 
     private SimulationManager simulationManager;
@@ -41,6 +43,8 @@ public class Visualizer extends Application {
 
     private Button btnRun;
     private Button btnDFS;
+    private Button btnSetStart;
+    private Button btnSetExit;
     private Button btnBlockMode;
     private Button btnFireMode;
     private Button btnReset;
@@ -78,18 +82,36 @@ public class Visualizer extends Application {
 
         btnRun = new Button("Run BFS");
         btnDFS = new Button("Run DFS");
+        btnSetStart = new Button("Set Start (S)");
+        btnSetExit = new Button("Set Exit (E)");
         btnBlockMode = new Button("Block mode");
         btnFireMode = new Button("Fire mode");
         btnReset = new Button("Reset");
 
         styleButton(btnRun, "#2ecc71");
         styleButton(btnDFS, "#8b5cf6");
+        styleButton(btnSetStart, "#06b6d4");
+        styleButton(btnSetExit, "#ec4899");
         styleButton(btnBlockMode, "#f39c12");
         styleButton(btnFireMode, "#e74c3c");
         styleButton(btnReset, "#3498db");
 
         btnRun.setOnAction(e -> runAndAnimateBFS());
         btnDFS.setOnAction(e -> runAndAnimateDFS());
+
+        btnSetStart.setOnAction(e -> {
+            stopAnimation();
+            currentMode = (currentMode == EditMode.SET_START) ? EditMode.NONE : EditMode.SET_START;
+            updateModeStatus();
+            refreshMapOnly();
+        });
+
+        btnSetExit.setOnAction(e -> {
+            stopAnimation();
+            currentMode = (currentMode == EditMode.SET_EXIT) ? EditMode.NONE : EditMode.SET_EXIT;
+            updateModeStatus();
+            refreshMapOnly();
+        });
 
         btnBlockMode.setOnAction(e -> {
             stopAnimation();
@@ -140,7 +162,7 @@ public class Visualizer extends Application {
                         "-fx-border-radius: 12;"
         );
 
-        HBox controls = new HBox(12, btnRun, btnDFS, btnBlockMode, btnFireMode, btnReset);
+        HBox controls = new HBox(12, btnRun, btnDFS, btnSetStart, btnSetExit, btnBlockMode, btnFireMode, btnReset);
         controls.setAlignment(Pos.CENTER);
 
         VBox topBox = new VBox(12, title, controls);
@@ -196,12 +218,40 @@ public class Visualizer extends Application {
 
         char cell = map.getCell(row, col);
 
-        if (cell == BuildingMap.START || cell == BuildingMap.EXIT || cell == BuildingMap.WALL) {
-            statusLabel.setText("You cannot modify S, E, or wall cells.");
-            return;
-        }
-
-        if (currentMode == EditMode.BLOCK) {
+        if (currentMode == EditMode.SET_START) {
+            if (cell == BuildingMap.WALL) {
+                statusLabel.setText("Cannot place start on a wall.");
+                return;
+            }
+            // Remove old start if it exists
+            Node oldStart = map.findStart();
+            if (oldStart != null) {
+                map.setCell(oldStart.getRow(), oldStart.getCol(), BuildingMap.FREE);
+            }
+            map.setCell(row, col, BuildingMap.START);
+            statusLabel.setText("Start (S) placed at (" + row + ", " + col + ")");
+            currentMode = EditMode.NONE;
+        } else if (currentMode == EditMode.SET_EXIT) {
+            if (cell == BuildingMap.WALL) {
+                statusLabel.setText("Cannot place exit on a wall.");
+                return;
+            }
+            // Delete exit if clicking on existing exit
+            if (cell == BuildingMap.EXIT) {
+                map.setCell(row, col, BuildingMap.FREE);
+                statusLabel.setText("Exit (E) removed from (" + row + ", " + col + ")");
+            } else if (cell != BuildingMap.START) {
+                map.setCell(row, col, BuildingMap.EXIT);
+                statusLabel.setText("Exit (E) placed at (" + row + ", " + col + ")");
+            } else {
+                statusLabel.setText("Cannot place exit on start position.");
+                return;
+            }
+        } else if (currentMode == EditMode.BLOCK) {
+            if (cell == BuildingMap.START || cell == BuildingMap.EXIT || cell == BuildingMap.WALL) {
+                statusLabel.setText("You cannot modify S, E, or wall cells.");
+                return;
+            }
             if (cell == BuildingMap.FREE) {
                 simulationManager.applyClosedDoor(row, col);
                 statusLabel.setText("Blocked cell at (" + row + ", " + col + ")");
@@ -212,6 +262,10 @@ public class Visualizer extends Application {
                 statusLabel.setText("Fire cell cannot become blocked.");
             }
         } else if (currentMode == EditMode.FIRE) {
+            if (cell == BuildingMap.START || cell == BuildingMap.EXIT || cell == BuildingMap.WALL) {
+                statusLabel.setText("Cannot place fire on S, E, or wall cells.");
+                return;
+            }
             if (cell == BuildingMap.FREE || cell == BuildingMap.BLOCKED) {
                 simulationManager.igniteInitialFire(row, col);
                 simulationManager.spreadFireStep();
@@ -315,6 +369,8 @@ public class Visualizer extends Application {
     private void setButtonsDisabled(boolean disabled) {
         btnRun.setDisable(disabled);
         btnDFS.setDisable(disabled);
+        btnSetStart.setDisable(disabled);
+        btnSetExit.setDisable(disabled);
         btnBlockMode.setDisable(disabled);
         btnFireMode.setDisable(disabled);
         btnReset.setDisable(false);
@@ -330,13 +386,29 @@ public class Visualizer extends Application {
         styleButton(btnDFS, "#8b5cf6");
         styleButton(btnReset, "#3498db");
 
-        if (currentMode == EditMode.BLOCK) {
+        if (currentMode == EditMode.SET_START) {
+            styleButton(btnSetStart, "#0891b2");
+            styleButton(btnSetExit, "#ec4899");
+            styleButton(btnBlockMode, "#f39c12");
+            styleButton(btnFireMode, "#e74c3c");
+        } else if (currentMode == EditMode.SET_EXIT) {
+            styleButton(btnSetStart, "#06b6d4");
+            styleButton(btnSetExit, "#be185d");
+            styleButton(btnBlockMode, "#f39c12");
+            styleButton(btnFireMode, "#e74c3c");
+        } else if (currentMode == EditMode.BLOCK) {
+            styleButton(btnSetStart, "#06b6d4");
+            styleButton(btnSetExit, "#ec4899");
             styleButton(btnBlockMode, "#d97706");
             styleButton(btnFireMode, "#e74c3c");
         } else if (currentMode == EditMode.FIRE) {
+            styleButton(btnSetStart, "#06b6d4");
+            styleButton(btnSetExit, "#ec4899");
             styleButton(btnBlockMode, "#f39c12");
             styleButton(btnFireMode, "#b91c1c");
         } else {
+            styleButton(btnSetStart, "#06b6d4");
+            styleButton(btnSetExit, "#ec4899");
             styleButton(btnBlockMode, "#f39c12");
             styleButton(btnFireMode, "#e74c3c");
         }
