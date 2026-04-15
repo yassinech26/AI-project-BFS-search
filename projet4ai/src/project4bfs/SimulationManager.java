@@ -25,6 +25,11 @@ public class SimulationManager {
         return explorer.search();
     }
 
+    public DFSExplorer.SearchResult runDFS() {
+        DFSExplorer explorer = new DFSExplorer(workingMap);
+        return explorer.search();
+    }
+
     public void applyBlockedCorridor(List<Node> cells) {
         for (Node node : cells) {
             workingMap.blockCell(node.getRow(), node.getCol());

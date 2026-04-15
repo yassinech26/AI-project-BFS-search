@@ -40,6 +40,7 @@ public class Visualizer extends Application {
     private TextArea pathArea;
 
     private Button btnRun;
+    private Button btnDFS;
     private Button btnBlockMode;
     private Button btnFireMode;
     private Button btnReset;
@@ -76,16 +77,19 @@ public class Visualizer extends Application {
         canvas.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleCanvasClick);
 
         btnRun = new Button("Run BFS");
+        btnDFS = new Button("Run DFS");
         btnBlockMode = new Button("Block mode");
         btnFireMode = new Button("Fire mode");
         btnReset = new Button("Reset");
 
         styleButton(btnRun, "#2ecc71");
+        styleButton(btnDFS, "#8b5cf6");
         styleButton(btnBlockMode, "#f39c12");
         styleButton(btnFireMode, "#e74c3c");
         styleButton(btnReset, "#3498db");
 
-        btnRun.setOnAction(e -> runAndAnimate());
+        btnRun.setOnAction(e -> runAndAnimateBFS());
+        btnDFS.setOnAction(e -> runAndAnimateDFS());
 
         btnBlockMode.setOnAction(e -> {
             stopAnimation();
@@ -136,7 +140,7 @@ public class Visualizer extends Application {
                         "-fx-border-radius: 12;"
         );
 
-        HBox controls = new HBox(12, btnRun, btnBlockMode, btnFireMode, btnReset);
+        HBox controls = new HBox(12, btnRun, btnDFS, btnBlockMode, btnFireMode, btnReset);
         controls.setAlignment(Pos.CENTER);
 
         VBox topBox = new VBox(12, title, controls);
@@ -223,7 +227,7 @@ public class Visualizer extends Application {
         refreshMapOnly();
     }
 
-    private void runAndAnimate() {
+    private void runAndAnimateBFS() {
         stopAnimation();
         map = simulationManager.getWorkingMap();
 
@@ -231,7 +235,15 @@ public class Visualizer extends Application {
         animateExploration(result.getExploredOrder(), result.getPath(), result);
     }
 
-    private void animateExploration(List<Node> explored, List<Node> path, BFSExplorer.SearchResult result) {
+    private void runAndAnimateDFS() {
+        stopAnimation();
+        map = simulationManager.getWorkingMap();
+
+        DFSExplorer.SearchResult result = simulationManager.runDFS();
+        animateExploration(result.getExploredOrder(), result.getPath(), result);
+    }
+
+    private void animateExploration(List<Node> explored, List<Node> path, Object result) {
         setButtonsDisabled(true);
         btnReset.setDisable(false);
 
@@ -250,16 +262,33 @@ public class Visualizer extends Application {
                 new KeyFrame(Duration.millis(70L * explored.size() + 250), e -> {
                     drawMap(explored, path);
 
-                    if (result.isFound()) {
-                        distanceLabel.setText("Distance: " + result.getDistance());
-                        exploredLabel.setText("Explored states: " + result.getExploredStates());
-                        statusLabel.setText("Exit found at " + result.getReachedExit());
-                        pathArea.setText(formatPath(path));
-                    } else {
-                        distanceLabel.setText("Distance: impossible");
-                        exploredLabel.setText("Explored states: " + result.getExploredStates());
-                        statusLabel.setText("No reachable exit.");
-                        pathArea.setText("No path found.");
+                    // Cast to check if it's a valid search result
+                    if (result instanceof BFSExplorer.SearchResult) {
+                        BFSExplorer.SearchResult bfsResult = (BFSExplorer.SearchResult) result;
+                        if (bfsResult.isFound()) {
+                            distanceLabel.setText("Distance: " + bfsResult.getDistance());
+                            exploredLabel.setText("Explored states: " + bfsResult.getExploredStates());
+                            statusLabel.setText("Exit found at " + bfsResult.getReachedExit());
+                            pathArea.setText(formatPath(path));
+                        } else {
+                            distanceLabel.setText("Distance: impossible");
+                            exploredLabel.setText("Explored states: " + bfsResult.getExploredStates());
+                            statusLabel.setText("No reachable exit.");
+                            pathArea.setText("No path found.");
+                        }
+                    } else if (result instanceof DFSExplorer.SearchResult) {
+                        DFSExplorer.SearchResult dfsResult = (DFSExplorer.SearchResult) result;
+                        if (dfsResult.isFound()) {
+                            distanceLabel.setText("Distance: " + dfsResult.getDistance());
+                            exploredLabel.setText("Explored states: " + dfsResult.getExploredStates());
+                            statusLabel.setText("Exit found at " + dfsResult.getReachedExit());
+                            pathArea.setText(formatPath(path));
+                        } else {
+                            distanceLabel.setText("Distance: impossible");
+                            exploredLabel.setText("Explored states: " + dfsResult.getExploredStates());
+                            statusLabel.setText("No reachable exit.");
+                            pathArea.setText("No path found.");
+                        }
                     }
 
                     setButtonsDisabled(false);
@@ -285,6 +314,7 @@ public class Visualizer extends Application {
 
     private void setButtonsDisabled(boolean disabled) {
         btnRun.setDisable(disabled);
+        btnDFS.setDisable(disabled);
         btnBlockMode.setDisable(disabled);
         btnFireMode.setDisable(disabled);
         btnReset.setDisable(false);
@@ -297,6 +327,7 @@ public class Visualizer extends Application {
 
     private void updateModeButtons() {
         styleButton(btnRun, "#2ecc71");
+        styleButton(btnDFS, "#8b5cf6");
         styleButton(btnReset, "#3498db");
 
         if (currentMode == EditMode.BLOCK) {
