@@ -50,6 +50,7 @@ public class Visualizer extends Application {
     private Button btnSetExit;
     private Button btnBlockMode;
     private Button btnFireMode;
+    private Button btnPause;
     private Button btnReset;
 
     private Timeline currentTimeline;
@@ -89,6 +90,7 @@ public class Visualizer extends Application {
         btnSetExit = new Button("Set Exit (E)");
         btnBlockMode = new Button("Block mode");
         btnFireMode = new Button("Fire mode");
+        btnPause = new Button("Pause");
         btnReset = new Button("Reset");
 
         styleButton(btnRun, "#2ecc71");
@@ -97,10 +99,25 @@ public class Visualizer extends Application {
         styleButton(btnSetExit, "#ec4899");
         styleButton(btnBlockMode, "#f39c12");
         styleButton(btnFireMode, "#e74c3c");
+        styleButton(btnPause, "#9333ea");
         styleButton(btnReset, "#3498db");
 
         btnRun.setOnAction(e -> runAndAnimateBFS());
         btnDFS.setOnAction(e -> runAndAnimateDFS());
+
+        btnPause.setOnAction(e -> {
+            if (currentTimeline != null) {
+                if (currentTimeline.getStatus().toString().equals("RUNNING")) {
+                    currentTimeline.pause();
+                    btnPause.setText("Resume");
+                    statusLabel.setText("Animation paused.");
+                } else {
+                    currentTimeline.play();
+                    btnPause.setText("Pause");
+                    statusLabel.setText("Animation resumed.");
+                }
+            }
+        });
 
         btnSetStart.setOnAction(e -> {
             stopAnimation();
@@ -165,7 +182,7 @@ public class Visualizer extends Application {
                         "-fx-border-radius: 12;"
         );
 
-        HBox controls = new HBox(12, btnRun, btnDFS, btnSetStart, btnSetExit, btnBlockMode, btnFireMode, btnReset);
+        HBox controls = new HBox(12, btnRun, btnDFS, btnPause, btnSetStart, btnSetExit, btnBlockMode, btnFireMode, btnReset);
         controls.setAlignment(Pos.CENTER);
 
         VBox topBox = new VBox(12, title, controls);
@@ -303,6 +320,8 @@ public class Visualizer extends Application {
     private void animateExploration(List<Node> explored, List<Node> path, Object result) {
         setButtonsDisabled(true);
         btnReset.setDisable(false);
+        btnPause.setDisable(false);
+        btnPause.setText("Pause");
 
         currentTimeline = new Timeline();
 
@@ -351,6 +370,7 @@ public class Visualizer extends Application {
                     }
 
                     setButtonsDisabled(false);
+                    btnPause.setText("Pause");
                     updateModeButtons();
                 })
         );
@@ -389,6 +409,7 @@ public class Visualizer extends Application {
     private void setButtonsDisabled(boolean disabled) {
         btnRun.setDisable(disabled);
         btnDFS.setDisable(disabled);
+        btnPause.setDisable(disabled);
         btnSetStart.setDisable(disabled);
         btnSetExit.setDisable(disabled);
         btnBlockMode.setDisable(disabled);
